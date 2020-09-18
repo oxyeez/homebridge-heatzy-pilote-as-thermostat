@@ -118,9 +118,7 @@ async function setState(device, state) {
   if (device.heatzyTokenExpire_at < Date.now()) {
     await updateToken(device);
   }
-  device.log(state)
-  const mode = state ? "cft" : "off";
-  device.log(mode);
+  const mode = state ? 0 : 3;
   try {
     const request = {
       method: "post",
