@@ -122,7 +122,7 @@ async function setState(device, state) {
   const mode = state ? "cft" : "off";
   device.log(mode);
   try {
-    const response = await axios({
+    const request = {
       method: "post",
       url: device.postUrl,
       headers: {
@@ -134,9 +134,10 @@ async function setState(device, state) {
           mode: mode,
         },
       },
-    });
+    }
+    device.log(request)
+    const response = await axios(request);
     device.log(response)
-    //	device.log(response);
     if (response.status != 200) {
       device.log(
         "Error - returned code not 200: " +
