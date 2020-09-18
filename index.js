@@ -94,8 +94,10 @@ async function getState(device) {
     const response = await axios.get(device.getUrl, {
       headers: { "X-Gizwits-Application-Id": heatzy_Application_Id },
     });
-    if (response.status == 200 && response.data.attr.mode == "cft") {
-      state = true;
+    if (response.status == 200) {
+      if (response.data.attr.mode == "cft") {
+        state = true;
+      }
     } else {
       device.log(
         `${response.status} ${response.statusText} ${response.data.error_message}`
