@@ -181,6 +181,7 @@ SwitchAccessory.prototype.getOnCharacteristicHandler = async function (
   if (this.trace) {
     this.log("HomeKit asked for state (true for cft, false for off): " + state);
   }
+  this.log(state)
   if (state != null) {
     callback(null, state);
   } else {
