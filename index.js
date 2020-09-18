@@ -118,10 +118,9 @@ async function setState(device, state) {
   if (device.heatzyTokenExpire_at < Date.now()) {
     await updateToken(device);
   }
-  let mode = "off";
-  if (state) {
-    mode = "cft";
-  }
+  device.log(state)
+  const mode = state ? "cft" : "off";
+  device.log(mode);
   try {
     const response = await axios({
       method: "post",
@@ -138,9 +137,7 @@ async function setState(device, state) {
     });
     device.log(response)
     //	device.log(response);
-    if (response.status == 200) {
-    } else {
-      // Useless ? all status != 2xx will be errors
+    if (response.status != 200) {
       device.log(
         "Error - returned code not 200: " +
           response.status +
