@@ -136,6 +136,7 @@ async function setState(device, state) {
         },
       },
     });
+    device.log(response)
     //	device.log(response);
     if (response.status == 200) {
     } else {
