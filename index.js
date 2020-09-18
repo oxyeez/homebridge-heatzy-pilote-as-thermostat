@@ -133,9 +133,7 @@ async function setState(device, state) {
         },
       },
     }
-    device.log(request)
     const response = await axios(request);
-    device.log(response)
     if (response.status != 200) {
       device.log(
         "Error - returned code not 200: " +
@@ -180,7 +178,6 @@ SwitchAccessory.prototype.getOnCharacteristicHandler = async function (
   if (this.trace) {
     this.log("HomeKit asked for state (true for cft, false for off): " + state);
   }
-  this.log(state)
   if (state != null) {
     callback(null, state);
   } else {
