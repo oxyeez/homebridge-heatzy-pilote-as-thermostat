@@ -16,13 +16,13 @@ module.exports = (homebridge) => {
   Service = homebridge.hap.Service;
   Characteristic = homebridge.hap.Characteristic;
   homebridge.registerAccessory(
-    "homebridge-heatzy-as-switch",
+    "homebridge-heatzy-as-Thermostat",
     "HeatzyPilote",
-    SwitchAccessory
+    ThermostatAccessory
   );
 };
 
-function SwitchAccessory(log, config) {
+function ThermostatAccessory(log, config) {
   this.log = log;
   this.config = config;
 
@@ -39,17 +39,37 @@ function SwitchAccessory(log, config) {
   this.heatzyToken = "";
   this.heatzyTokenExpire_at = Date.now() - 10000; // Initial value is 10s in the past, to force login and refresh of token
 
-  this.state = null;
+  this.current_state = null;
+  this.target_state = null;
 
   this.informationService = new Service.AccessoryInformation()
     .setCharacteristic(Characteristic.Manufacturer, "Heatzy")
     .setCharacteristic(Characteristic.Model, "Heatzy Pilote V2")
-    .setCharacteristic(Characteristic.SerialNumber, " unknown");
-  this.service = new Service.Switch(this.config.name);
+    .setCharacteristic(Characteristic.SerialNumber, "unknown");
+  this.service = new Service.Thermostat(this.config.name);
+
   this.service
-    .getCharacteristic(Characteristic.On)
-    .on("get", this.getOnCharacteristicHandler.bind(this))
-    .on("set", this.setOnCharacteristicHandler.bind(this));
+    .getCharacteristic(Characteristic.CurrentHeatingCoolingState)
+    .on("get", this.handleCurrentHeatingCoolingStateGet.bind(this));
+
+  this.service
+    .getCharacteristic(Characteristic.TargetHeatingCoolingState)
+    .on("get", this.handleTargetHeatingCoolingStateGet.bind(this))
+    .on("set", this.handleTargetHeatingCoolingStateSet.bind(this));
+
+  this.service
+    .getCharacteristic(Characteristic.CurrentTemperature)
+    .on("get", this.handleCurrentTemperatureGet.bind(this));
+
+  this.service
+    .getCharacteristic(Characteristic.TargetTemperature)
+    .on("get", this.handleTargetTemperatureGet.bind(this))
+    .on("set", this.handleTargetTemperatureSet.bind(this));
+
+  this.service
+    .getCharacteristic(Characteristic.TemperatureDisplayUnits)
+    .on("get", this.handleTemperatureDisplayUnitsGet.bind(this))
+    .on("set", this.handleTemperatureDisplayUnitsSet.bind(this));
 
   this.updateState(); // Get the current state of the device, and update HomeKit
   setInterval(this.updateState.bind(this), this.interval * 1000); // The state of the device will be checked every this.interval seconds
@@ -88,15 +108,25 @@ async function updateToken(device) {
   }
 }
 
-async function getState(device) {
-  let state = false;
+async function getCurrentState(device) {
+  let state = 0;
   try {
     const response = await axios.get(device.getUrl, {
       headers: { "X-Gizwits-Application-Id": heatzy_Application_Id },
     });
     if (response.status == 200) {
-      if (response.data.attr.mode == "cft") {
-        state = true;
+      switch (response.data.attr.mode) {
+        case "cft":
+          state = Characteristic.CurrentHeatingCoolingState.HEAT;
+          break;
+        case "eco":
+          state = Characteristic.CurrentHeatingCoolingState.COOL;
+          break;
+        case "stop":
+        case "fro":
+        default:
+          state = Characteristic.CurrentHeatingCoolingState.OFF;
+          break;
       }
     } else {
       device.log(
@@ -114,11 +144,60 @@ async function getState(device) {
   }
 }
 
-async function setState(device, state) {
+async function getTargetState(device) {
+  let state = false;
+  try {
+    const response = await axios.get(device.getUrl, {
+      headers: { "X-Gizwits-Application-Id": heatzy_Application_Id },
+    });
+    if (response.status == 200) {
+      if (response.data.attr.timer_switch == 1) {
+        state = Characteristic.TargetHeatingCoolingState.AUTO;
+      }
+      else {
+        switch (response.data.attr.mode) {
+          case "cft":
+            state = Characteristic.TargetHeatingCoolingState.HEAT;
+            break;
+          case "eco":
+            state = Characteristic.TargetHeatingCoolingState.COOL;
+            break;
+          case "stop":
+          case "fro":
+          default:
+            state = Characteristic.TargetHeatingCoolingState.OFF;
+            break;
+        }
+      }
+    } else {
+      device.log(
+        `${response.status} ${response.statusText} ${response.data.error_message}`
+      );
+      state = null;
+    }
+  } catch (error) {
+    device.log(
+      "Error : " + error.response.status + " " + error.response.statusText
+    );
+    state = null;
+  } finally {
+    return state;
+  }
+}
+
+async function setTargetState(device, state) {
+  state = await setTargetProgState(device, state);
+  if (state !== 3 && state !== null) {
+    state = await setTargetMode(device, state);
+  }
+  return state;
+}
+
+async function setTargetMode(device, state) {
   if (device.heatzyTokenExpire_at < Date.now()) {
     await updateToken(device);
   }
-  const mode = state ? 0 : 3;
+
   try {
     const request = {
       method: "post",
@@ -129,7 +208,7 @@ async function setState(device, state) {
       },
       data: {
         attrs: {
-          mode: mode,
+          mode: (state === 0) ? "stop" : (state === 1 ? "cft" : "eco"),
         },
       },
     }
@@ -155,28 +234,104 @@ async function setState(device, state) {
   }
 }
 
-SwitchAccessory.prototype.updateState = async function () {
-  const state = await getState(this);
-  if (state !== null) {
-    if (this.state === null) {
-      this.state = state;
-    } 
-    if (state !== this.state) {
-      if (this.trace) {
-        this.log("State has changed from: " + this.state + " to " + state);
-      }
-      this.state = state;
-      this.service.updateCharacteristic(Characteristic.On, state);
+async function setTargetProgState(device, state) {
+  if (device.heatzyTokenExpire_at < Date.now()) {
+    await updateToken(device);
+  }
+
+  try {
+    const request = {
+      method: "post",
+      url: device.postUrl,
+      headers: {
+        "X-Gizwits-Application-Id": heatzy_Application_Id,
+        "X-Gizwits-User-token": device.heatzyToken,
+      },
+      data: {
+        attrs: {
+          timer_switch: state === 3 ? 1 : 0
+        },
+      },
     }
+    const response = await axios(request);
+    if (response.status != 200) {
+      device.log(
+        "Error - returned code not 200: " +
+          response.status +
+          " " +
+          response.statusText +
+          " " +
+          response.data.error_message
+      );
+      state = null;
+    }
+  } catch (error) {
+    device.log(
+      "Error : " + error.response.status + " " + error.response.statusText
+    );
+    state = null;
+  } finally {
+    return state;
+  }
+}
+
+ThermostatAccessory.prototype.updateState = async function () {
+  const current_state = await getCurrentState(this);
+  if (current_state !== null) {
+    if (this.current_state === null) {
+      this.current_state = current_state;
+    } 
+    if (current_state !== this.current_state) {
+      if (this.current_state) {
+        this.log("State has changed from: " + this.current_state + " to " + current_state);
+      }
+      this.current_state = current_state;
+      this.service.updateCharacteristic(Characteristic.CurrentHeatingCoolingState, current_state);
+
+    }
+  }
+  
+  const target_state = await getTargetState(this);
+  if (target_state !== null) {
+    if (this.target_state === null) {
+      this.target_state = target_state;
+    } 
+    if (target_state !== this.target_state) {
+      if (this.target_state) {
+        this.log("State has changed from: " + this.target_state + " to " + target_state);
+      }
+      this.target_state = target_state;
+      this.service.updateCharacteristic(Characteristic.TargetHeatingCoolingState, target_state);
+    }
+  }
+
+  // this.service.updateCharacteristic(Characteristic.CurrentTemperature, 20);
+  // this.service.updateCharacteristic(Characteristic.TargetTemperature, 20);
+  // this.service.updateCharacteristic(Characteristic.TemperatureDisplayUnits, 0);
+};
+
+ThermostatAccessory.prototype.handleCurrentHeatingCoolingStateGet = async function (
+  callback
+) {
+  const state = await getCurrentState(this);
+  if (this.trace) {
+    this.log("HomeKit asked for current state (0 for stop or fro, 1 for cft, 2 for eco): " + state);
+  }
+  if (state != null) {
+    this.heatingCoolingState = state;
+    callback(null, state);
+  } else {
+    this.log("Error : Unavailable state");
+    callback(true);
   }
 };
 
-SwitchAccessory.prototype.getOnCharacteristicHandler = async function (
+ThermostatAccessory.prototype.handleTargetHeatingCoolingStateGet = async function (
   callback
 ) {
-  const state = await getState(this);
+  const state = await getTargetState(this);
   if (this.trace) {
-    this.log("HomeKit asked for state (true for cft, false for off): " + state);
+    this.log("HomeKit asked for target state (0 for stop or fro, 1 for cft, 2 for eco, 3 for prog): " + state);
   }
   if (state != null) {
     callback(null, state);
@@ -186,15 +341,13 @@ SwitchAccessory.prototype.getOnCharacteristicHandler = async function (
   }
 };
 
-SwitchAccessory.prototype.setOnCharacteristicHandler = async function (
+ThermostatAccessory.prototype.handleTargetHeatingCoolingStateSet = async function (
   value,
   callback
 ) {
-  const state = await setState(this, value);
+  const state = await setTargetState(this, value);
   if (this.trace) {
-    this.log(
-      "HomeKit changed state to (true for cft, false for off): " + state
-    );
+    this.log("HomeKit changed target state to (0 for stop or fro, 1 for cft, 2 for eco, 3 for prog): " + state);
   }
   if (state != null) {
     callback(null, state);
@@ -204,7 +357,57 @@ SwitchAccessory.prototype.setOnCharacteristicHandler = async function (
   }
 };
 
-SwitchAccessory.prototype.getServices = function () {
+ThermostatAccessory.prototype.handleCurrentTemperatureGet = function (
+  callback
+) {
+  const temp = 20;
+  if (this.trace) {
+    this.log("Give fake current temp of " + temp + "°");
+  }
+  callback(null, temp);
+};
+
+ThermostatAccessory.prototype.handleTargetTemperatureGet = function (
+  callback
+) {
+  const temp = 20;
+  if (this.trace) {
+    this.log("Give fake target temp of " + temp + "°");
+  }
+  callback(null, temp);
+};
+
+ThermostatAccessory.prototype.handleTargetTemperatureSet = function (
+  callback
+) {
+  const temp = 20;
+  if (this.trace) {
+    this.log("Set fake temp of " + temp + "°");
+  }
+  callback(null, temp);
+};
+
+ThermostatAccessory.prototype.handleTemperatureDisplayUnitsGet = function (
+  callback
+) {
+  const temp_unit = 0;
+  if (this.trace) {
+    this.log("Get fake temp unit (0 for °C, 1 for °F): " + temp_unit);
+  }
+  callback(null, temp_unit);
+};
+
+ThermostatAccessory.prototype.handleTemperatureDisplayUnitsSet = function (
+  callback
+) {
+  const temp_unit = 0;
+  if (this.trace) {
+    this.log("Set fake temp unit (0 for °C, 1 for °F): " + temp_unit);
+  }
+  callback(null, temp_unit);
+};
+
+ThermostatAccessory.prototype.getServices = function () {
   this.log("Init Services...");
   return [this.service, this.informationService];
 };

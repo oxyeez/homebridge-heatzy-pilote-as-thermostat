@@ -1,6 +1,6 @@
-# homebridge-heatzy-pilote
+# homebridge-heatzy-pilote-as-thermostat
 
-Homebridge plugin for Heatzy devices, considered as switches.
+Homebridge plugin for Heatzy devices, considered as thermostats.
  
 Heatzy uses the 'fil pilote' protocol to control an electric heater, with 4 states : 
 
@@ -9,18 +9,24 @@ Heatzy uses the 'fil pilote' protocol to control an electric heater, with 4 stat
 * Hors-gel : temperature set to ~7°C
 * Off.
 
-In this plugin, every Heatzy device is a switch, with these values : 
+The switch from a state to another can be automated within the official application, by creating a schedule.
 
-* `On` : Confort
+In this plugin, every Heatzy device is a thermostat, with these values : 
+
 * `Off` : Off
+* `Heat` : Confort
+* `Cool` : Eco
+* `Auto` : Turn on the automation created in the app
 
-If you set the device from the Home app, `on` will set the heater to Confort, and `off` to off.
-If you set it from the Heatzy app, or from the hardware button, Confort will be displayed in the Home app as `on`. Any other state (Eco, Hors-Gel or Off) will be displayed as `off`.
+If you set the device from the Home app, `Off` will set the heater to off, `Heat` to Confort, `Cool` to Eco and `Auto` will activate the last automation program that you used.
+If you set it from the Heatzy app, or from the hardware button, Confort will be displayed in the Home app as `Heat`, Eco as `Cool` and Prog as `Auto`. Any other state (Hors-Gel or Off) will be displayed as `Off`.
+
+For the rest of the functionnalities of the thermostat in the Home app, everything is fake : a fake current temperature of 20°C is set, as well as a fake target temperature of 20°C. If you try to change the target temperature, nothing will happened, as well as if you try to change the temperature unit from °C to °F.
 
 
 ## Installation
 
-Install or update this plugin using `npm i -g homebridge-heatzy-as-switch`.
+Install or update this plugin using `npm i -g homebridge-heatzy-as-thermostat`.
 
 Update the `config.json` file of your Homebridge setup, by modifying the sample configuration below.
 

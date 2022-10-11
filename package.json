@@ -1,19 +1,19 @@
 {
   "license": "MIT",
   "main": "index.js",
-  "name": "homebridge-heatzy-pilote",
+  "name": "homebridge-heatzy-pilote-as-thermostat",
   "scripts": {
     "test": "echo \"Error: no test specified\""
   },
   "version": "1.0.0",
-  "repository": "funkyremi/homebridge-heatzy-pilote",
-  "author": "Remi Testa",
+  "repository": "oxyeez/homebridge-heatzy-pilote-as-thermostat",
+  "author": "oxyeez",
   "bundleDependencies": false,
   "dependencies": {
     "axios": "^0.19.0"
   },
   "deprecated": false,
-  "description": "Use Heatzy as a switch between mode Confort (ON) and Off (OFF)",
+  "description": "Use Heatzy as a thermostat between mode  Off (OFF), Confort (HEAT), Eco (COOL) and Prog (AUTO)",
   "devDependencies": {},
   "engines": {
     "homebridge": ">=0.2.0",
@@ -22,6 +22,6 @@
   "keywords": [
     "homebridge-plugin",
     "Heatzy",
-    "switch"
+    "thermostat"
   ]
 }
