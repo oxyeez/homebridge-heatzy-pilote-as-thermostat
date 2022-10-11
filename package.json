@@ -5,7 +5,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\""
   },
-  "version": "1.0.0",
+  "version": "1.0.1",
   "repository": "oxyeez/homebridge-heatzy-pilote-as-thermostat",
   "author": "oxyeez",
   "bundleDependencies": false,

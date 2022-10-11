@@ -33,6 +33,8 @@ function ThermostatAccessory(log, config) {
   this.username = config["username"];
   this.password = config["password"];
   this.interval = config["interval"] || 60;
+  this.fake_temp = config["fake_temp"] >= 10 && config["fake_temp"] <= 38 ? config["fake_temp"] : 20;
+  this.temp_unit = config["temp_unit"] === "F" ? 1 : 0;
   this.trace = config["trace"] || false;
 
   // Heatzy token
@@ -304,10 +306,6 @@ ThermostatAccessory.prototype.updateState = async function () {
       this.service.updateCharacteristic(Characteristic.TargetHeatingCoolingState, target_state);
     }
   }
-
-  // this.service.updateCharacteristic(Characteristic.CurrentTemperature, 20);
-  // this.service.updateCharacteristic(Characteristic.TargetTemperature, 20);
-  // this.service.updateCharacteristic(Characteristic.TemperatureDisplayUnits, 0);
 };
 
 ThermostatAccessory.prototype.handleCurrentHeatingCoolingStateGet = async function (
@@ -360,51 +358,46 @@ ThermostatAccessory.prototype.handleTargetHeatingCoolingStateSet = async functio
 ThermostatAccessory.prototype.handleCurrentTemperatureGet = function (
   callback
 ) {
-  const temp = 20;
   if (this.trace) {
-    this.log("Give fake current temp of " + temp + "°");
+    this.log("Give fake current temp of " + this.fake_temp + "°");
   }
-  callback(null, temp);
+  callback(null, this.fake_temp);
 };
 
 ThermostatAccessory.prototype.handleTargetTemperatureGet = function (
   callback
 ) {
-  const temp = 20;
   if (this.trace) {
-    this.log("Give fake target temp of " + temp + "°");
+    this.log("Give fake target temp of " + this.fake_temp + "°");
   }
-  callback(null, temp);
+  callback(null, this.fake_temp);
 };
 
 ThermostatAccessory.prototype.handleTargetTemperatureSet = function (
   callback
 ) {
-  const temp = 20;
   if (this.trace) {
-    this.log("Set fake temp of " + temp + "°");
+    this.log("Set fake temp of " + this.fake_temp + "°");
   }
-  callback(null, temp);
+  callback(null, this.fake_temp);
 };
 
 ThermostatAccessory.prototype.handleTemperatureDisplayUnitsGet = function (
   callback
 ) {
-  const temp_unit = 0;
   if (this.trace) {
-    this.log("Get fake temp unit (0 for °C, 1 for °F): " + temp_unit);
+    this.log("Get fake temp unit (0 for °C, 1 for °F): " + this.temp_unit);
   }
-  callback(null, temp_unit);
+  callback(null, this.temp_unit);
 };
 
 ThermostatAccessory.prototype.handleTemperatureDisplayUnitsSet = function (
   callback
 ) {
-  const temp_unit = 0;
   if (this.trace) {
-    this.log("Set fake temp unit (0 for °C, 1 for °F): " + temp_unit);
+    this.log("Set fake temp unit (0 for °C, 1 for °F): " + this.temp_unit);
   }
-  callback(null, temp_unit);
+  callback(null, this.temp_unit);
 };
 
 ThermostatAccessory.prototype.getServices = function () {

@@ -21,7 +21,7 @@ In this plugin, every Heatzy device is a thermostat, with these values :
 If you set the device from the Home app, `Off` will set the heater to off, `Heat` to Confort, `Cool` to Eco and `Auto` will activate the last automation program that you used.
 If you set it from the Heatzy app, or from the hardware button, Confort will be displayed in the Home app as `Heat`, Eco as `Cool` and Prog as `Auto`. Any other state (Hors-Gel or Off) will be displayed as `Off`.
 
-For the rest of the functionnalities of the thermostat in the Home app, everything is fake : a fake current temperature of 20°C is set, as well as a fake target temperature of 20°C. If you try to change the target temperature, nothing will happened, as well as if you try to change the temperature unit from °C to °F.
+For the rest of the functionnalities of the thermostat in the Home app, everything is fake : a fake current temperature, target temperature and temperature unit, choosen in the config.json, is set by default, and will always stay the same. If you try to change the target temperature from the Home app, nothing will happened, as well as if you try to change the temperature unit from °C to °F.
 
 
 ## Installation
@@ -46,6 +46,8 @@ The configuration parameters to enable your devices would need to be added to `a
                     "password": "XXX",
                     "did": "011233455677899abbcd",
                     "interval": 60,
+                    "fake_temp": 20,
+                    "temp_unit": "C",
                     "trace" : false
                 }
             ]
@@ -61,6 +63,8 @@ The configuration parameters to enable your devices would need to be added to `a
 * `username` and `password` (required) are the credentials you use in the Heatzy app.
 * `did` (required) is the parameter for your device. See below how to get it.
 * `interval` (optional) is how often (in seconds) the plugin will ask Heatzy servers the state of your device, which is necessary when you change the state from outside of Homekit. Default is 60s.
+* `fake_temp` (optional) the fake temperature displayed in the Home app as current and target temperature. Home app accepts values from 10 to 38. Default is 20°.
+* `temp_unit` (optional) the temperature unit used in the Home app, "C" for °C, "F" for °F. Default is °C.
 * `trace` (optional) displays the main events in homebridge log . Default is false.
 
 
