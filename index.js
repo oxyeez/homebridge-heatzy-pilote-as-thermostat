@@ -111,10 +111,17 @@ async function updateToken(device) {
 }
 
 async function getCurrentState(device) {
+  if (device.heatzyTokenExpire_at < Date.now()) {
+    await updateToken(device);
+  }
+
   let state = 0;
   try {
     const response = await axios.get(device.getUrl, {
-      headers: { "X-Gizwits-Application-Id": heatzy_Application_Id },
+      headers: {
+        "X-Gizwits-Application-Id": heatzy_Application_Id,
+        "X-Gizwits-User-token": device.heatzyToken,
+      },
     });
     if (response.status == 200) {
       switch (response.data.attr.mode) {
@@ -147,10 +154,17 @@ async function getCurrentState(device) {
 }
 
 async function getTargetState(device) {
+  if (device.heatzyTokenExpire_at < Date.now()) {
+    await updateToken(device);
+  }
+
   let state = false;
   try {
     const response = await axios.get(device.getUrl, {
-      headers: { "X-Gizwits-Application-Id": heatzy_Application_Id },
+      headers: {
+        "X-Gizwits-Application-Id": heatzy_Application_Id,
+        "X-Gizwits-User-token": device.heatzyToken,
+      },
     });
     if (response.status == 200) {
       if (response.data.attr.timer_switch == 1) {
@@ -218,11 +232,11 @@ async function setTargetMode(device, state) {
     if (response.status != 200) {
       device.log(
         "Error - returned code not 200: " +
-          response.status +
-          " " +
-          response.statusText +
-          " " +
-          response.data.error_message
+        response.status +
+        " " +
+        response.statusText +
+        " " +
+        response.data.error_message
       );
       state = null;
     }
@@ -259,11 +273,11 @@ async function setTargetProgState(device, state) {
     if (response.status != 200) {
       device.log(
         "Error - returned code not 200: " +
-          response.status +
-          " " +
-          response.statusText +
-          " " +
-          response.data.error_message
+        response.status +
+        " " +
+        response.statusText +
+        " " +
+        response.data.error_message
       );
       state = null;
     }
@@ -282,7 +296,7 @@ ThermostatAccessory.prototype.updateState = async function () {
   if (current_state !== null) {
     if (this.current_state === null) {
       this.current_state = current_state;
-    } 
+    }
     if (current_state !== this.current_state) {
       if (this.current_state) {
         this.log("State has changed from: " + this.current_state + " to " + current_state);
@@ -292,12 +306,12 @@ ThermostatAccessory.prototype.updateState = async function () {
 
     }
   }
-  
+
   const target_state = await getTargetState(this);
   if (target_state !== null) {
     if (this.target_state === null) {
       this.target_state = target_state;
-    } 
+    }
     if (target_state !== this.target_state) {
       if (this.target_state) {
         this.log("State has changed from: " + this.target_state + " to " + target_state);
